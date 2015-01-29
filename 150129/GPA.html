@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <title>GPA</title>
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+        <script type="text/javascript" charset="utf-8">
+            var Grade = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'E', 'X'];
+            var GPA = [4.3, 4, 3.7, 3.3, 3, 2.7, 2.3, 2, 1.7, 1, 0, 0];
+            var Mapping = [];
+            for (i = 0; i < Grade.length; i++) {
+                Mapping[Grade[i]] = GPA[i];
+            }
+            function calc() {
+                // Get grade
+                var grade = $('td:nth-child(6)').text();
+                grade = grade.replace(/\u00a0/g, ' ').split(' ');
+                var credits = $('td:nth-child(5)').text();
+                credits = credits.replace(/\u00a0/g, ' ').split(' ');
+                console.log(grade);
+                console.log(credits);
+                // Calc
+                var totalCredits = 0;
+                var totalGPA = 0;
+                for (i = 0; i < grade.length; i++) {
+                    if (Mapping[grade[i]] == undefined)
+                        continue;
+                    totalCredits += credits[i*2]*1.0;
+                    totalGPA += Mapping[grade[i]]*credits[i*2];
+                    console.log(i + 'th: ' + totalCredits);
+                    console.log(i + 'th: ' + totalGPA);
+                }
+                // Show result
+                totalGPA = Math.round(totalGPA/totalCredits*100)/100;
+                console.log('total ' + totalGPA);
+                document.getElementById('Answer').innerHTML = 'Credits: '+totalCredits+'<br>GPA: '+totalGPA+'<br>';
+            }
+        </script>
+    </head>
+    <body>
+        <div id="Answer">
+            Credits: 0 <br />
+            GPA: 0 <br />
+        </div>
+        <button onclick="calc();">Calc</button> <br />
+        <div id="Data" contenteditable placeholder="Put here~">
+            Put here~
+        </div>
+    </body>
+</html>
