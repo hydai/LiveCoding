@@ -1,0 +1,188 @@
+<!doctype html>
+
+<head>
+  <meta charset="utf-8">
+
+  <title>Pusheen Meow</title>
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+
+  <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
+  <script type="text/javascript" src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.3.4.min.js"></script>
+</head>
+
+<body class="container col-md-offset-1 col-md-10">
+  <!--
+  X1. 可以吃複製貼上的表格 (div)
+  X2. 得到表格的資料 (button)
+  X3. 得到統計的資料 (button)
+  X4. 送出資料 (button)
+  X5. 行程表，課表 (table)
+-->
+  <div class="row">
+    <div class="col-md-9" id="rawData" contenteditable>把課表放進來～</div>
+    <button class="btn btn-primary col-md-1" id="loadData">載入課表～</button>
+    <button class="btn btn-info col-md-1" id="queryData">查詢狀態～</button>
+    <button class="btn btn-warning col-md-1" id="pushData">送出資料！</button>
+  </div>
+  <hr>
+
+  <div class="col-md-12" id="timeTable">...</div>
+
+  <div style="display:none" class="error">
+    <h1>Error!</h1>
+  </div>
+
+  <div style="display:none" class="success">
+    <h1>It works!</h1>
+  </div>
+
+  <script type="text/javascript">
+  var busy = '<center><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></center>';
+  var free = '';
+  var timeName = [
+    '1 (08:00-08:50)',
+    '2 (09:00-09:50)',
+    '3 (10:10-11:00)',
+    '4 (11:10-12:00)',
+    'n (12:10-13:00)',
+    '5 (13:20-14:10)',
+    '6 (14:20-15:10)',
+    '7 (15:30-16:20)',
+    '8 (16:30-17:20)',
+    '9 (17:30-18:20)',
+    'a (18:30-19:20)',
+    'b (19:30-20:20)',
+    'c (20:30-21:20)'
+  ];
+  var dayName = ['一', '二', '三', '四', '五', '六', '日'];
+  $(function() {
+    Parse.initialize("3J9wVWi3ZHiBKXM8zlt7hRrlwrIW342RcomzW6Bl", "95SeMWKKK9HqXMFIprPWcq70rcR2aW7EQKN3NZfP");
+
+    var tableContent = '<table class="table table-bordered table-hover">';
+    // DayName
+    tableContent += '<tr>';
+    tableContent += '<th></th>';
+    for (var i = 0; i < dayName.length; i++) {
+      tableContent += '<th><center>' + dayName[i] + '</center></th>';
+    }
+    tableContent += '</tr>';
+    // Current status
+    var status = [];
+    for (var i = 0; i < 7 * 13; i++) {
+      status[i] = '0';
+    }
+    var cellCounter = 0;
+    // Cell
+    for (var i = 0; i < 13; i++) {
+      tableContent += '<tr>';
+      tableContent += '<td><center>' + timeName[i] + '</center></td>';
+      for (var j = 0; j < 7; j++) {
+        tableContent += '<td class="cell" id="' + cellCounter + '">';
+        tableContent += free;
+        tableContent += '</td>';
+        cellCounter += 1;
+      }
+      tableContent += '</tr>';
+    }
+    tableContent += '</table>';
+    $('#timeTable').html(tableContent);
+
+    $('.cell').click(function() {
+      var id = $(this).attr('id');
+      var target = '#' + id;
+      if (status[id] == '0') {
+        status[id] = '1';
+        $(target).html(busy);
+      } else {
+        status[id] = '0';
+        $(target).html(free);
+      }
+    });
+
+    $('#queryData').click(function() {
+      // ScheduleObject:
+      //    Schedule: string (7*13 chars)
+      var ScheduleObject = Parse.Object.extend("ScheduleObject");
+      var queryObject = new Parse.Query(ScheduleObject);
+      queryObject.limit(1000); // 預設的數量 = 100
+      queryObject.find({
+        success: function(results) {
+          var totalStatus = [];
+          for (var i = 0; i < status.length; i++) {
+            totalStatus[i] = 0;
+          };
+          for (var i = 0; i < results.length; i++) {
+            var currentStatus = results[i].get('Schedule');
+            for (var j = 0; j < currentStatus.length; j++) {
+              if (currentStatus[j] == '1')
+                totalStatus[j] += 1;
+            };
+          };
+          var level = [];
+          for (var i = 0; i < 4; i++) {
+            level[i] = results.length * (i + 1) / 4;
+          };
+          for (var i = 0; i < totalStatus.length; i++) {
+            var target = '#' + i;
+            $(target).removeClass();
+            $(target).addClass('cell');
+            if (totalStatus[i] < level[0]) {
+              // Do nothing
+            } else if (totalStatus[i] < level[1]) {
+              $(target).addClass('info');
+            } else if (totalStatus[i] < level[2]) {
+              $(target).addClass('warning');
+            } else {
+              $(target).addClass('danger');
+            }
+          };
+        },
+        error: function(error) {
+          alert('Query failed QAQ');
+        }
+      });
+    });
+    $('#loadData').click(function() {
+      var rawData = $('#rawData td:nth-child(4)').text();
+      var queryKey1 = ['M', 'T', 'W', 'R', 'F', 'S'];
+      var queryKey2 = ['1', '2', '3', '4', 'n', '5', '6', '7', '8', '9', 'a', 'b', 'c'];
+      for (var i = 0; i < queryKey1.length; i++) {
+        for (var j = 0; j < queryKey2.length; j++) {
+          var key = queryKey1[i]+queryKey2[j];
+          var isFound = rawData.search(key);
+          var cellIndex = j*7+i;
+          var target = '#' + cellIndex;
+          if (isFound != -1) {
+            status[cellIndex] = '1';
+            $(target).html(busy);
+          }
+        };
+      };
+    });
+
+    $('#pushData').click(function() {
+      var uploadData = '';
+      for (var i = 0; i < 7 * 13; i++) {
+        uploadData += status[i];
+      }
+      var ScheduleObject = Parse.Object.extend("ScheduleObject");
+      var scheduleObject = new ScheduleObject();
+      scheduleObject.save({
+        Schedule: uploadData
+      }, {
+        success: function(object) {
+          $(".success").show();
+        },
+        error: function(model, error) {
+          $(".error").show();
+        }
+      });
+    });
+
+  });
+  </script>
+</body>
+
+</html>
